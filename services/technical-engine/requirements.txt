@@ -3,5 +3,4 @@ uvicorn[standard]
 yfinance
 pandas
 numpy
-# pandas-ta requires numba which does not yet support Python 3.14
-# Install manually once numba adds 3.14 support: pip install pandas-ta
+pandas-ta

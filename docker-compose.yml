@@ -1,4 +1,11 @@
 services:
+  technical-engine:
+    build: ./services/technical-engine
+    container_name: nifty-picker-technical
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+
   mongo:
     image: mongo:7
     container_name: nifty-picker-mongo
