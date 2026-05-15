@@ -1,12 +1,12 @@
-import { bosNewHiddenPage, bosEval, bosClosePage } from '../utils/browseros';
+import { bosNewPage, bosEval, bosClosePage } from '../utils/browseros';
 
 const NSE = 'https://www.nseindia.com';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Open a hidden NSE tab, run fn with a nseGet helper, then close the tab
 async function withNSETab<T>(fn: (get: (path: string) => Promise<any>) => Promise<T>): Promise<T> {
-  const pageId = await bosNewHiddenPage(`${NSE}/`);
-  await sleep(2000); // allow session cookies to be set
+  const pageId = await bosNewPage(`${NSE}/`);
+  await sleep(6000); // visible tab + longer wait for Akamai challenge to resolve
 
   const get = async (path: string): Promise<any> => {
     const raw = await bosEval(

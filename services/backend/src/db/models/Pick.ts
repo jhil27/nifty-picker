@@ -1,71 +1,49 @@
 import { Schema, model, Document } from 'mongoose';
 
-interface StockPick {
-  rank: number;
-  ticker: string;
+interface PickEntry {
+  symbol:      string;
   companyName: string;
-  sector: string;
-  buyPrice: number;
-  targetPrice: number;
-  stopLoss: number;
-  score: {
-    total: number;
-    sentiment: number;
-    fundamental: number;
-    qualitative: number;
-    technical: number;
-    seasonality: number;
-  };
-  rationale: string;
-  analystTarget: number;
-  analystRating: 'Strong Buy' | 'Buy' | 'Hold';
+  score:       number;
+  verdict:     'STRONG_BUY' | 'BUY';
+  rationale:   string;
+  risks:       string[];
+  entryPrice:  number | null;
+  stopLoss:    number | null;
+  targets:     { t1: number | null; t2: number | null };
 }
 
 export interface PickDocument extends Document {
-  date: Date;
-  market: {
-    niftyChange: number;
-    sentiment: 'bullish' | 'bearish' | 'neutral';
-    fiiFlow: number;
-    advanceDeclineRatio: number;
-  };
-  picks: StockPick[];
-  generatedAt: Date;
+  date:           Date;
+  sentiment:      'bullish' | 'bearish' | 'neutral';
+  niftyChange:    number;
+  fiiNetCrores:   number;
+  adRatio:        number;
+  topSectors:     string[];
+  picks:          PickEntry[];
+  generatedAt:    Date;
   pipelineStatus: 'success' | 'partial' | 'failed';
 }
 
-const scoreSchema = new Schema({
-  total:       { type: Number, required: true },
-  sentiment:   { type: Number, required: true },
-  fundamental: { type: Number, required: true },
-  qualitative: { type: Number, required: true },
-  technical:   { type: Number, required: true },
-  seasonality: { type: Number, required: true },
-}, { _id: false });
-
-const stockPickSchema = new Schema({
-  rank:          { type: Number, required: true },
-  ticker:        { type: String, required: true },
-  companyName:   { type: String, required: true },
-  sector:        { type: String, required: true },
-  buyPrice:      { type: Number, required: true },
-  targetPrice:   { type: Number, required: true },
-  stopLoss:      { type: Number, required: true },
-  score:         { type: scoreSchema, required: true },
-  rationale:     { type: String, required: true },
-  analystTarget: { type: Number, required: true },
-  analystRating: { type: String, enum: ['Strong Buy', 'Buy', 'Hold'], required: true },
+const pickEntrySchema = new Schema({
+  symbol:      { type: String, required: true },
+  companyName: { type: String, required: true },
+  score:       { type: Number, required: true },
+  verdict:     { type: String, enum: ['STRONG_BUY', 'BUY'], required: true },
+  rationale:   { type: String, required: true },
+  risks:       [{ type: String }],
+  entryPrice:  { type: Number, default: null },
+  stopLoss:    { type: Number, default: null },
+  targets:     { t1: { type: Number, default: null }, t2: { type: Number, default: null } },
 }, { _id: false });
 
 const pickSchema = new Schema<PickDocument>({
-  date: { type: Date, required: true },
-  market: {
-    niftyChange:         { type: Number, required: true },
-    sentiment:           { type: String, enum: ['bullish', 'bearish', 'neutral'], required: true },
-    fiiFlow:             { type: Number, required: true },
-    advanceDeclineRatio: { type: Number, required: true },
-  },
-  picks:          { type: [stockPickSchema], default: [] },
+  date:           { type: Date, required: true },
+  sentiment:      { type: String, enum: ['bullish', 'bearish', 'neutral'], required: true },
+  niftyChange:    { type: Number, required: true },
+  fiiNetCrores:   { type: Number, default: 0 },
+  adRatio:        { type: Number, default: 0 },
+  topSectors:     [{ type: String }],
+  picks:          { type: [pickEntrySchema], default: [] },
   generatedAt:    { type: Date, default: Date.now },
   pipelineStatus: { type: String, enum: ['success', 'partial', 'failed'], required: true },
 });

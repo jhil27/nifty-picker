@@ -48,6 +48,14 @@ export async function bosNewHiddenPage(url: string): Promise<number> {
   return parseInt(match[1], 10);
 }
 
+// Opens a visible background tab — use for sites with aggressive bot detection (e.g. NSE/Akamai)
+export async function bosNewPage(url: string): Promise<number> {
+  const text = await callTool('new_page', { url, background: true });
+  const match = text.match(/\b(\d{1,6})\b/);
+  if (!match) throw new Error(`Could not parse page ID from BrowserOS response: ${text}`);
+  return parseInt(match[1], 10);
+}
+
 export async function bosNavigate(page: number, url: string): Promise<void> {
   await callTool('navigate_page', { page, url, action: 'url' });
 }
