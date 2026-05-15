@@ -34,20 +34,20 @@ async function resolveSlug(symbol: string): Promise<string | null> {
       `(async()=>{
         const r = await fetch(${JSON.stringify(`https://api.tickertape.in/search?text=${encodeURIComponent(symbol)}`)}, {credentials:'include',headers:{'Accept':'application/json'}});
         const d = await r.json();
-        const match = d?.data?.stocks?.find(s => s.ticker === ${JSON.stringify(symbol)});
+        const stocks = d?.data?.stocks ?? [];
+        if (stocks.length === 0) return 'NOT_FOUND';
+        const match = stocks.find(s => s.ticker === ${JSON.stringify(symbol)});
         return match?.slug ?? null;
       })()`
     );
+    if (raw === 'NOT_FOUND') throw new Error(`tickertape:${symbol} not listed (new/unlisted stock)`);
     return raw === 'null' ? null : raw?.replace(/^"|"$/g, '') ?? null;
   } finally {
     await bosClosePage(pageId);
   }
 }
 
-async function scrapeOne(symbol: string): Promise<TickertapeData> {
-  const slug = await resolveSlug(symbol);
-  if (!slug) throw new Error(`Tickertape: no slug found for ${symbol}`);
-
+async function scrapeOne(symbol: string, slug: string): Promise<TickertapeData> {
   const pageId = await bosNewHiddenPage(`https://www.tickertape.in${slug}`);
   try {
     await sleep(4000);
@@ -86,19 +86,25 @@ async function scrapeOne(symbol: string): Promise<TickertapeData> {
   }
 }
 
+const nullResult = (symbol: string, error: string): TickertapeData => ({
+  symbol,
+  pe: null, pb: null, dividendYield: null, analystBuyPct: null, analystCount: null,
+  scorecard: { performance: null, valuation: null, growth: null, profitability: null, entryPoint: null },
+  error,
+});
+
 export async function scrapeTickertape(symbol: string): Promise<TickertapeData> {
-  return retry(
-    () => scrapeOne(symbol),
-    3, 5000,
-    `tickertape:${symbol}`
-  ).catch((err) => ({
-    symbol,
-    pe:            null,
-    pb:            null,
-    dividendYield: null,
-    analystBuyPct: null,
-    analystCount:  null,
-    scorecard: { performance: null, valuation: null, growth: null, profitability: null, entryPoint: null },
-    error:         (err as Error).message,
-  }));
+  // Short-circuit retry for stocks not listed on Tickertape (new/demerged listings)
+  try {
+    const slug = await resolveSlug(symbol);
+    if (!slug) return nullResult(symbol, `tickertape:${symbol} ticker mismatch — search returned results but no exact match`);
+    // Slug resolved — proceed with full scrape + retry on transient failures
+    return await retry(
+      () => scrapeOne(symbol, slug),
+      3, 5000,
+      `tickertape:${symbol}`
+    );
+  } catch (err) {
+    return nullResult(symbol, (err as Error).message);
+  }
 }
